@@ -10,16 +10,22 @@ fn main() {
     // Fetch input devices
     let input_devices = get_input_devices(&host);
     println!("Available Input Devices");
-    for device in &input_devices {
-        println!("{}", device.name().unwrap());
+    for (i, device) in input_devices.iter().enumerate() {
+        match device.name() {
+            Ok(n) => println!("({}) {}", i, n),
+            Err(_) => println!("({}) Unknown device", i),
+        }
     }
     let input_device: &Device = &input_devices[0];
 
     // Fetch output devices
     let output_devices = get_output_devices(&host);
     println!("Available Output Devices");
-    for device in &output_devices {
-        println!("{}", device.name().unwrap());
+    for (i, device) in output_devices.iter().enumerate() {
+        match device.name() {
+            Ok(n) => println!("({}) {}", i, n),
+            Err(_) => println!("({}) Unknown device", i),
+        }
     }
     let output_device: &Device = &output_devices[0];
 
@@ -38,9 +44,12 @@ fn main() {
     //     .play_stream(input_stream_id)
     //     .expect("Failed to play input stream");
 
-    let start = std::time::Instant::now();
+    let ring_buffer = RingBuffer::<[f32; 2]>::new(44100);
+    let (mut prod, mut cons) = ring_buffer.split();
+    for _ in 0..10 {
+        prod.push([0.0, 0.0]).unwrap();
+    }
 
-    let mut out_elem = 0.0;
     event_loop.run(move |stream_id, stream_result| {
         let stream_data = match stream_result {
             Ok(data) => data,
@@ -56,7 +65,8 @@ fn main() {
             } => {
                 for elem in buffer.iter() {
                     // println!("{}", elem);
-                    out_elem = *elem;
+                    // out_elem = *elem;
+                    prod.push([*elem, *elem]).unwrap();
                 }
             }
             // StreamData::Output {
@@ -77,7 +87,10 @@ fn main() {
                 buffer: UnknownTypeOutputBuffer::F32(mut buffer),
             } => {
                 for elem in buffer.iter_mut() {
-                    *elem = out_elem * 10.0;
+                    *elem = match cons.pop() {
+                        Some(f) => f[0],
+                        None => 0.0,
+                    };
                 }
             }
             _ => (),
