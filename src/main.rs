@@ -1,24 +1,88 @@
 use console::style;
 use console::Key;
-use cpal::traits::{DeviceTrait, HostTrait};
-use cpal::Device;
-use cpal::Host;
+use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
+use cpal::{Device, Host, StreamData, UnknownTypeInputBuffer, UnknownTypeOutputBuffer};
+use ringbuf::RingBuffer;
 
 fn main() {
     let host = cpal::default_host();
+    let event_loop = host.event_loop();
     // Fetch input devices
     let input_devices = get_input_devices(&host);
-    println!("Input Devices");
-    for device in input_devices {
+    println!("Available Input Devices");
+    for device in &input_devices {
         println!("{}", device.name().unwrap());
     }
+    let input_device: &Device = &input_devices[0];
 
     // Fetch output devices
     let output_devices = get_output_devices(&host);
-    println!("Output Devices");
-    for device in output_devices {
+    println!("Available Output Devices");
+    for device in &output_devices {
         println!("{}", device.name().unwrap());
     }
+    let output_device: &Device = &output_devices[0];
+
+    let input_stream_id = event_loop
+        .build_input_stream(input_device, &input_device.default_input_format().unwrap())
+        .unwrap();
+
+    let output_stream_id = event_loop
+        .build_output_stream(
+            output_device,
+            &output_device.default_output_format().unwrap(),
+        )
+        .unwrap();
+
+    // event_loop
+    //     .play_stream(input_stream_id)
+    //     .expect("Failed to play input stream");
+
+    let start = std::time::Instant::now();
+
+    let mut out_elem = 0.0;
+    event_loop.run(move |stream_id, stream_result| {
+        let stream_data = match stream_result {
+            Ok(data) => data,
+            Err(err) => {
+                eprintln!("an error occurred on stream {:?}: {}", stream_id, err);
+                return;
+            }
+        };
+
+        match stream_data {
+            StreamData::Input {
+                buffer: UnknownTypeInputBuffer::F32(buffer),
+            } => {
+                for elem in buffer.iter() {
+                    // println!("{}", elem);
+                    out_elem = *elem;
+                }
+            }
+            // StreamData::Output {
+            //     buffer: UnknownTypeOutputBuffer::U16(mut buffer),
+            // } => {
+            //     for elem in buffer.iter_mut() {
+            //         *elem = u16::max_value() / 2;
+            //     }
+            // }
+            // StreamData::Output {
+            //     buffer: UnknownTypeOutputBuffer::I16(mut buffer),
+            // } => {
+            //     for elem in buffer.iter_mut() {
+            //         *elem = sin as i16;
+            //     }
+            // }
+            StreamData::Output {
+                buffer: UnknownTypeOutputBuffer::F32(mut buffer),
+            } => {
+                for elem in buffer.iter_mut() {
+                    *elem = out_elem * 10.0;
+                }
+            }
+            _ => (),
+        }
+    });
 
     // println!("{}", host.)
     let term = console::Term::stdout();
