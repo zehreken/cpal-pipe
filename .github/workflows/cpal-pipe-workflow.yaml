@@ -10,7 +10,7 @@ env:
 
 jobs:
   rustfmt-check:
-    runs-on: ubuntu-latest
+    runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Install stable
@@ -27,7 +27,7 @@ jobs:
         args: --all -- --check
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: macOS-latest
     steps:
     - uses: actions/checkout@v2
     - name: Build
