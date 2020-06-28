@@ -40,9 +40,15 @@ fn main() {
         )
         .unwrap();
 
-    // event_loop
-    //     .play_stream(input_stream_id)
-    //     .expect("Failed to play input stream");
+    println!("{:?} {:?}", input_stream_id, output_stream_id);
+
+    event_loop
+        .play_stream(input_stream_id)
+        .expect("Failed to play input stream");
+
+    event_loop
+        .play_stream(output_stream_id)
+        .expect("Failed to play output stream");
 
     let ring_buffer = RingBuffer::<[f32; 2]>::new(44100);
     let (mut prod, mut cons) = ring_buffer.split();
@@ -64,25 +70,9 @@ fn main() {
                 buffer: UnknownTypeInputBuffer::F32(buffer),
             } => {
                 for elem in buffer.iter() {
-                    // println!("{}", elem);
-                    // out_elem = *elem;
                     prod.push([*elem, *elem]).unwrap();
                 }
             }
-            // StreamData::Output {
-            //     buffer: UnknownTypeOutputBuffer::U16(mut buffer),
-            // } => {
-            //     for elem in buffer.iter_mut() {
-            //         *elem = u16::max_value() / 2;
-            //     }
-            // }
-            // StreamData::Output {
-            //     buffer: UnknownTypeOutputBuffer::I16(mut buffer),
-            // } => {
-            //     for elem in buffer.iter_mut() {
-            //         *elem = sin as i16;
-            //     }
-            // }
             StreamData::Output {
                 buffer: UnknownTypeOutputBuffer::F32(mut buffer),
             } => {
