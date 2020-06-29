@@ -6,19 +6,20 @@ use std::thread;
 fn main() {
     start_play_through();
 
-    let mut buf = String::from("");
-    'key: loop {
-        if buf == "quit\n" {
-            break 'key;
-        } else {
-            buf.clear();
-            std::io::stdin().read_line(&mut buf).unwrap();
-        }
-    }
+    // let mut buf = String::new();
+    // 'key: loop {
+    //     if buf == "quit" {
+    //         break 'key;
+    //     } else {
+    //         buf.clear();
+    //         std::io::stdin().read_line(&mut buf).unwrap();
+    //         buf.remove(buf.len() - 1);
+    //     }
+    // }
 }
 
 fn start_play_through() {
-    thread::spawn(|| {
+    let handle = thread::spawn(|| {
         let host = cpal::default_host();
         let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
@@ -29,7 +30,18 @@ fn start_play_through() {
                 Err(_) => println!("({}) Unknown device", i),
             }
         }
-        let input_device: &Device = &input_devices[0];
+        let mut buf = String::new();
+        'input_key: loop {
+            if buf == "0" {
+                break 'input_key;
+            } else {
+                buf.clear();
+                std::io::stdin().read_line(&mut buf).unwrap();
+                buf.remove(buf.len() - 1);
+            }
+        }
+        let index = buf.parse::<usize>().unwrap();
+        let input_device: &Device = &input_devices[index];
 
         // Fetch output devices
         let output_devices = get_output_devices(&host);
@@ -40,7 +52,18 @@ fn start_play_through() {
                 Err(_) => println!("({}) Unknown device", i),
             }
         }
-        let output_device: &Device = &output_devices[0];
+        let mut buf = String::new();
+        'output_key: loop {
+            if buf == "0" || buf == "1" {
+                break 'output_key;
+            } else {
+                buf.clear();
+                std::io::stdin().read_line(&mut buf).unwrap();
+                buf.remove(buf.len() - 1);
+            }
+        }
+        let index = buf.parse::<usize>().unwrap();
+        let output_device: &Device = &output_devices[index];
         let input_stream_id = event_loop
             .build_input_stream(&input_device, &input_device.default_input_format().unwrap())
             .unwrap();
@@ -99,6 +122,8 @@ fn start_play_through() {
             }
         });
     });
+
+    handle.join().unwrap();
 }
 
 fn test_key(c: char) {
