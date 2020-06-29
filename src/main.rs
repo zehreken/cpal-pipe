@@ -1,32 +1,18 @@
-use console::style;
-use console::Key;
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use cpal::{Device, Host, StreamData, UnknownTypeInputBuffer, UnknownTypeOutputBuffer};
 use ringbuf::RingBuffer;
 use std::thread;
 
 fn main() {
+    let mut buf = String::from("");
+    let input = std::io::stdin().read_line(&mut buf);
+
+    println!("{}", buf);
     start_play_through();
-
-    // println!("{}", host.)
-    let term = console::Term::stdout();
-    let mut res_key;
-    'running: loop {
-        res_key = term.read_key();
-        match res_key.unwrap() {
-            Key::Char(c) => test_key(c),
-            Key::Enter => println!("enter"),
-            Key::Backspace => println!("backspace"),
-            Key::Escape => break 'running,
-            _ => {}
-        }
-    } // 'running
-
-    println!("Quit");
 }
 
 fn start_play_through() {
-    thread::spawn(|| {
+    let handle = thread::spawn(|| {
         let host = cpal::default_host();
         let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
@@ -48,7 +34,7 @@ fn start_play_through() {
                 Err(_) => println!("({}) Unknown device", i),
             }
         }
-        let output_device: &Device = &output_devices[2];
+        let output_device: &Device = &output_devices[0];
         let input_stream_id = event_loop
             .build_input_stream(&input_device, &input_device.default_input_format().unwrap())
             .unwrap();
@@ -107,6 +93,8 @@ fn start_play_through() {
             }
         });
     });
+
+    handle.join().unwrap();
 }
 
 fn test_key(c: char) {
@@ -128,7 +116,7 @@ fn get_input_devices(host: &Host) -> Vec<Device> {
                 input_devices.push(device.into());
             }
         }
-        Err(error) => println!("Input devices error: {}", error),
+        Err(error) => eprintln!("Input devices error: {}", error),
     }
 
     input_devices
@@ -143,7 +131,7 @@ fn get_output_devices(host: &Host) -> Vec<Device> {
                 output_devices.push(device.into());
             }
         }
-        Err(error) => println!("Output devices error: {}", error),
+        Err(error) => eprintln!("Output devices error: {}", error),
     }
 
     output_devices
