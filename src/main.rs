@@ -4,15 +4,21 @@ use ringbuf::RingBuffer;
 use std::thread;
 
 fn main() {
-    let mut buf = String::from("");
-    let input = std::io::stdin().read_line(&mut buf);
-
-    println!("{}", buf);
     start_play_through();
+
+    let mut buf = String::from("");
+    'key: loop {
+        if buf == "quit\n" {
+            break 'key;
+        } else {
+            buf.clear();
+            std::io::stdin().read_line(&mut buf).unwrap();
+        }
+    }
 }
 
 fn start_play_through() {
-    let handle = thread::spawn(|| {
+    thread::spawn(|| {
         let host = cpal::default_host();
         let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
@@ -93,8 +99,6 @@ fn start_play_through() {
             }
         });
     });
-
-    handle.join().unwrap();
 }
 
 fn test_key(c: char) {
