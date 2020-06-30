@@ -14,15 +14,13 @@ fn main() {
     'key: loop {
         if buf == "quit" {
             break 'key;
-        }
-        else if buf == "0" {
+        } else if buf == "0" {
             sender.send(0).unwrap();
             buf.clear();
         } else if buf == "1" {
             sender.send(1).unwrap();
             buf.clear();
         } else {
-            println!("{}", buf);
             buf.clear();
             std::io::stdin().read_line(&mut buf).unwrap();
             buf.remove(buf.len() - 1);
@@ -31,7 +29,7 @@ fn main() {
 }
 
 fn start_play_through(receiver: Receiver<usize>) {
-    let handle = thread::spawn(move || {
+    thread::spawn(move || {
         let host = cpal::default_host();
         let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
@@ -42,19 +40,13 @@ fn start_play_through(receiver: Receiver<usize>) {
                 Err(_) => println!("({}) Unknown device", i),
             }
         }
-        
-        let index = receiver.recv().unwrap();
-        // let mut buf = String::new();
-        // 'input_key: loop {
-        //     if buf == "0" {
-        //         break 'input_key;
-        //     } else {
-        //         buf.clear();
-        //         std::io::stdin().read_line(&mut buf).unwrap();
-        //         buf.remove(buf.len() - 1);
-        //     }
-        // }
-        // let index = buf.parse::<usize>().unwrap();
+
+        // This should be a loop, duh!
+        let mut index = receiver.recv().unwrap();
+        if index >= input_devices.len() {
+            println!("Choose between 0 and {}", input_devices.len() - 1);
+            index = receiver.recv().unwrap();
+        }
         let input_device: &Device = &input_devices[index];
 
         // Fetch output devices
@@ -67,18 +59,11 @@ fn start_play_through(receiver: Receiver<usize>) {
             }
         }
 
-        let index = receiver.recv().unwrap();
-        // let mut buf = String::new();
-        // 'output_key: loop {
-        //     if buf == "0" || buf == "1" {
-        //         break 'output_key;
-        //     } else {
-        //         buf.clear();
-        //         std::io::stdin().read_line(&mut buf).unwrap();
-        //         buf.remove(buf.len() - 1);
-        //     }
-        // }
-        // let index = buf.parse::<usize>().unwrap();
+        index = receiver.recv().unwrap();
+        if index >= input_devices.len() {
+            println!("Choose between 0 and {}", input_devices.len() - 1);
+            index = receiver.recv().unwrap();
+        }
         let output_device: &Device = &output_devices[index];
 
         let input_stream_id = event_loop
@@ -139,11 +124,9 @@ fn start_play_through(receiver: Receiver<usize>) {
             }
         });
     });
-
-    // handle.join().unwrap();
 }
 
-fn test_key(c: char) {
+fn _test_key(c: char) {
     if c == 'a' {
         println!("test a");
     } else if c == 's' {
