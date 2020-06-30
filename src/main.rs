@@ -1,25 +1,37 @@
 use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
 use cpal::{Device, Host, StreamData, UnknownTypeInputBuffer, UnknownTypeOutputBuffer};
 use ringbuf::RingBuffer;
+use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 
 fn main() {
-    start_play_through();
+    let (sender, receiver) = mpsc::channel::<usize>();
+    start_play_through(receiver);
 
-    // let mut buf = String::new();
-    // 'key: loop {
-    //     if buf == "quit" {
-    //         break 'key;
-    //     } else {
-    //         buf.clear();
-    //         std::io::stdin().read_line(&mut buf).unwrap();
-    //         buf.remove(buf.len() - 1);
-    //     }
-    // }
+    // This is the blocking thread and also the main
+    let mut buf = String::new();
+    'key: loop {
+        if buf == "quit" {
+            break 'key;
+        }
+        else if buf == "0" {
+            sender.send(0).unwrap();
+            buf.clear();
+        } else if buf == "1" {
+            sender.send(1).unwrap();
+            buf.clear();
+        } else {
+            println!("{}", buf);
+            buf.clear();
+            std::io::stdin().read_line(&mut buf).unwrap();
+            buf.remove(buf.len() - 1);
+        }
+    }
 }
 
-fn start_play_through() {
-    let handle = thread::spawn(|| {
+fn start_play_through(receiver: Receiver<usize>) {
+    let handle = thread::spawn(move || {
         let host = cpal::default_host();
         let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
@@ -30,17 +42,19 @@ fn start_play_through() {
                 Err(_) => println!("({}) Unknown device", i),
             }
         }
-        let mut buf = String::new();
-        'input_key: loop {
-            if buf == "0" {
-                break 'input_key;
-            } else {
-                buf.clear();
-                std::io::stdin().read_line(&mut buf).unwrap();
-                buf.remove(buf.len() - 1);
-            }
-        }
-        let index = buf.parse::<usize>().unwrap();
+        
+        let index = receiver.recv().unwrap();
+        // let mut buf = String::new();
+        // 'input_key: loop {
+        //     if buf == "0" {
+        //         break 'input_key;
+        //     } else {
+        //         buf.clear();
+        //         std::io::stdin().read_line(&mut buf).unwrap();
+        //         buf.remove(buf.len() - 1);
+        //     }
+        // }
+        // let index = buf.parse::<usize>().unwrap();
         let input_device: &Device = &input_devices[index];
 
         // Fetch output devices
@@ -52,18 +66,21 @@ fn start_play_through() {
                 Err(_) => println!("({}) Unknown device", i),
             }
         }
-        let mut buf = String::new();
-        'output_key: loop {
-            if buf == "0" || buf == "1" {
-                break 'output_key;
-            } else {
-                buf.clear();
-                std::io::stdin().read_line(&mut buf).unwrap();
-                buf.remove(buf.len() - 1);
-            }
-        }
-        let index = buf.parse::<usize>().unwrap();
+
+        let index = receiver.recv().unwrap();
+        // let mut buf = String::new();
+        // 'output_key: loop {
+        //     if buf == "0" || buf == "1" {
+        //         break 'output_key;
+        //     } else {
+        //         buf.clear();
+        //         std::io::stdin().read_line(&mut buf).unwrap();
+        //         buf.remove(buf.len() - 1);
+        //     }
+        // }
+        // let index = buf.parse::<usize>().unwrap();
         let output_device: &Device = &output_devices[index];
+
         let input_stream_id = event_loop
             .build_input_stream(&input_device, &input_device.default_input_format().unwrap())
             .unwrap();
@@ -123,7 +140,7 @@ fn start_play_through() {
         });
     });
 
-    handle.join().unwrap();
+    // handle.join().unwrap();
 }
 
 fn test_key(c: char) {
