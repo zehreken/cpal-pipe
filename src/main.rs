@@ -138,30 +138,30 @@ fn _test_key(c: char) {
 
 fn get_input_devices(host: &Host) -> Vec<Device> {
     let r = host.input_devices();
-    let mut input_devices: Vec<Device> = vec![];
-    match r {
-        Ok(devices) => {
-            for device in devices {
-                input_devices.push(device.into());
-            }
-        }
-        Err(error) => eprintln!("Input devices error: {}", error),
-    }
 
-    input_devices
+    filter_devices(r)
 }
 
 fn get_output_devices(host: &Host) -> Vec<Device> {
     let r = host.output_devices();
-    let mut output_devices: Vec<Device> = vec![];
-    match r {
-        Ok(devices) => {
-            for device in devices {
-                output_devices.push(device.into());
+
+    filter_devices(r)
+}
+
+use cpal::{Devices, DevicesError};
+use std::iter::Filter;
+fn filter_devices(
+    r_devices: Result<Filter<Devices, fn(&Device) -> bool>, DevicesError>,
+) -> Vec<Device> {
+    let mut devices: Vec<Device> = vec![];
+    match r_devices {
+        Ok(ds) => {
+            for d in ds {
+                devices.push(d.into());
             }
         }
-        Err(error) => eprintln!("Output devices error: {}", error),
+        Err(error) => eprintln!("Devices error: {}", error),
     }
 
-    output_devices
+    devices
 }
