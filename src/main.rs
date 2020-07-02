@@ -40,7 +40,11 @@ fn start_play_through(receiver: Receiver<usize>) {
         for (i, device) in input_devices.iter().enumerate() {
             match device.name() {
                 Ok(n) => println!("({}) {}", i, n),
-                Err(_) => println!("({}) Unknown device", i),
+                Err(_) => eprintln!("({}) Unknown device", i),
+            }
+            match device.default_input_format() {
+                Ok(f) => println!("--- {:?}", f),
+                Err(_) => eprintln!("Couldn't fetch format"),
             }
         }
 
@@ -58,7 +62,11 @@ fn start_play_through(receiver: Receiver<usize>) {
         for (i, device) in output_devices.iter().enumerate() {
             match device.name() {
                 Ok(n) => println!("({}) {}", i, n),
-                Err(_) => println!("({}) Unknown device", i),
+                Err(_) => eprintln!("({}) Unknown device", i),
+            }
+            match device.default_input_format() {
+                Ok(f) => println!("--- {:?}", f),
+                Err(_) => eprintln!("Couldn't fetch format"),
             }
         }
 
@@ -90,10 +98,10 @@ fn start_play_through(receiver: Receiver<usize>) {
             .play_stream(output_stream_id)
             .expect("Failed to play output stream");
 
-        let ring_buffer = RingBuffer::<[f32; 2]>::new(44100);
+        let ring_buffer = RingBuffer::<f32>::new(44100);
         let (mut prod, mut cons) = ring_buffer.split();
         for _ in 0..10 {
-            prod.push([0.0, 0.0]).unwrap();
+            prod.push(0.0).unwrap();
         }
 
         event_loop.run(move |stream_id, stream_result| {
@@ -110,7 +118,11 @@ fn start_play_through(receiver: Receiver<usize>) {
                     buffer: UnknownTypeInputBuffer::F32(buffer),
                 } => {
                     for elem in buffer.iter() {
-                        prod.push([*elem, *elem]).unwrap();
+                        let r = prod.push(*elem);
+                        match r {
+                            Ok(_) => (),
+                            Err(error) => eprintln!("Error: {:?}", error),
+                        }
                     }
                 }
                 StreamData::Output {
@@ -118,7 +130,7 @@ fn start_play_through(receiver: Receiver<usize>) {
                 } => {
                     for elem in buffer.iter_mut() {
                         *elem = match cons.pop() {
-                            Some(f) => f[0],
+                            Some(e) => e,
                             None => 0.0,
                         };
                     }
