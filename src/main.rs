@@ -20,6 +20,9 @@ fn main() {
         } else if buf == "1" {
             sender.send(1).unwrap();
             buf.clear();
+        } else if buf == "2" {
+            sender.send(2).unwrap();
+            buf.clear();
         } else {
             buf.clear();
             std::io::stdin().read_line(&mut buf).unwrap();
@@ -60,8 +63,8 @@ fn start_play_through(receiver: Receiver<usize>) {
         }
 
         index = receiver.recv().unwrap();
-        if index >= input_devices.len() {
-            println!("Choose between 0 and {}", input_devices.len() - 1);
+        if index >= output_devices.len() {
+            println!("Choose between 0 and {}", output_devices.len() - 1);
             index = receiver.recv().unwrap();
         }
         let output_device: &Device = &output_devices[index];
