@@ -98,7 +98,7 @@ fn start_play_through(receiver: Receiver<usize>) {
             .play_stream(output_stream_id)
             .expect("Failed to play output stream");
 
-        let ring_buffer = RingBuffer::<f32>::new(44100);
+        let ring_buffer = RingBuffer::<f32>::new(2048);
         let (mut prod, mut cons) = ring_buffer.split();
         for _ in 0..10 {
             prod.push(0.0).unwrap();
