@@ -55,6 +55,10 @@ fn start_play_through(receiver: Receiver<usize>) {
             index = receiver.recv().unwrap();
         }
         let input_device: &Device = &input_devices[index];
+        let input_channel_count = match input_device.default_input_format() {
+            Ok(f) => f.channels,
+            Err(_) => 0,
+        };
 
         // Fetch output devices
         let output_devices = get_output_devices(&host);
@@ -76,6 +80,13 @@ fn start_play_through(receiver: Receiver<usize>) {
             index = receiver.recv().unwrap();
         }
         let output_device: &Device = &output_devices[index];
+        let output_channel_count = match output_device.default_output_format() {
+            Ok(f) => f.channels,
+            Err(_) => 0,
+        };
+
+        let (prod_factor, cons_factor) =
+            get_channel_factor(input_channel_count, output_channel_count);
 
         let input_stream_id = event_loop
             .build_input_stream(&input_device, &input_device.default_input_format().unwrap())
@@ -118,10 +129,12 @@ fn start_play_through(receiver: Receiver<usize>) {
                     buffer: UnknownTypeInputBuffer::F32(buffer),
                 } => {
                     for elem in buffer.iter() {
-                        let r = prod.push(*elem);
-                        match r {
-                            Ok(_) => (),
-                            Err(error) => eprintln!("Error: {:?}", error),
+                        for _ in 0..prod_factor {
+                            let r = prod.push(*elem);
+                            match r {
+                                Ok(_) => (),
+                                Err(error) => eprintln!("Error: {:?}", error),
+                            }
                         }
                     }
                 }
@@ -129,16 +142,38 @@ fn start_play_through(receiver: Receiver<usize>) {
                     buffer: UnknownTypeOutputBuffer::F32(mut buffer),
                 } => {
                     for elem in buffer.iter_mut() {
-                        *elem = match cons.pop() {
-                            Some(e) => e,
-                            None => 0.0,
-                        };
+                        for _ in 0..cons_factor {
+                            *elem = match cons.pop() {
+                                Some(e) => e,
+                                None => 0.0,
+                            };
+                        }
                     }
                 }
                 _ => (),
             }
         });
     });
+}
+
+fn get_channel_factor(input_channel_count: u16, output_channel_count: u16) -> (u16, u16) {
+    let mut prod_factor = 0;
+    let mut cons_factor = 0;
+    if input_channel_count == output_channel_count
+        || (input_channel_count == 0 || output_channel_count == 0)
+    {
+        prod_factor = 1;
+        cons_factor = 1;
+    } else if input_channel_count != output_channel_count {
+        if input_channel_count > output_channel_count {
+            prod_factor = 1;
+            cons_factor = input_channel_count / output_channel_count;
+        } else {
+            prod_factor = output_channel_count / input_channel_count;
+            cons_factor = 1;
+        }
+    }
+    (prod_factor, cons_factor)
 }
 
 fn _test_key(c: char) {
