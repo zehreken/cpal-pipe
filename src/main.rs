@@ -68,7 +68,7 @@ fn start_play_through(receiver: Receiver<usize>) {
                 Ok(n) => println!("({}) {}", i, n),
                 Err(_) => eprintln!("({}) Unknown device", i),
             }
-            match device.default_input_format() {
+            match device.default_output_format() {
                 Ok(f) => println!("--- {:?}", f),
                 Err(_) => eprintln!("Couldn't fetch format"),
             }
@@ -99,7 +99,7 @@ fn start_play_through(receiver: Receiver<usize>) {
             )
             .unwrap();
 
-        println!("{:?} {:?}", input_stream_id, output_stream_id);
+        // println!("{:?} {:?}", input_stream_id, output_stream_id);
 
         event_loop
             .play_stream(input_stream_id)
@@ -109,7 +109,7 @@ fn start_play_through(receiver: Receiver<usize>) {
             .play_stream(output_stream_id)
             .expect("Failed to play output stream");
 
-        let ring_buffer = RingBuffer::<f32>::new(2048);
+        let ring_buffer = RingBuffer::<f32>::new(4096);
         let (mut prod, mut cons) = ring_buffer.split();
         for _ in 0..10 {
             prod.push(0.0).unwrap();
