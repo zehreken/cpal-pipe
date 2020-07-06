@@ -3,4 +3,4 @@ cpal-pipe is a command line utility program that provides audio playback functio
 * Simply run the binary
 * Choose the input device by typing the index
 * Choose the output device by typing the index
-* Type quit to exit the program
+* Type `quit` to exit the program
