@@ -50,7 +50,7 @@ fn start_play_through(receiver: Receiver<usize>) {
 
         // This should be a loop, duh!
         let mut index = receiver.recv().unwrap();
-        if index >= input_devices.len() {
+        while index >= input_devices.len() {
             println!("Choose between 0 and {}", input_devices.len() - 1);
             index = receiver.recv().unwrap();
         }
@@ -75,7 +75,7 @@ fn start_play_through(receiver: Receiver<usize>) {
         }
 
         index = receiver.recv().unwrap();
-        if index >= output_devices.len() {
+        while index >= output_devices.len() {
             println!("Choose between 0 and {}", output_devices.len() - 1);
             index = receiver.recv().unwrap();
         }
