@@ -51,7 +51,11 @@ fn start_play_through(receiver: Receiver<usize>) {
         // This should be a loop, duh!
         let mut index = receiver.recv().unwrap();
         while index >= input_devices.len() {
-            println!("Choose between 0 and {}", input_devices.len() - 1);
+            let mut options_str = String::new();
+            for i in 0..input_devices.len() {
+                options_str += &format!("{}, ", i)[..];
+            }
+            println!("Available options: {}", options_str);
             index = receiver.recv().unwrap();
         }
         let input_device: &Device = &input_devices[index];
@@ -76,7 +80,11 @@ fn start_play_through(receiver: Receiver<usize>) {
 
         index = receiver.recv().unwrap();
         while index >= output_devices.len() {
-            println!("Choose between 0 and {}", output_devices.len() - 1);
+            let mut options_str = String::new();
+            for i in 0..output_devices.len() {
+                options_str += &format!("{}, ", i)[..];
+            }
+            println!("Available options: {}", options_str);
             index = receiver.recv().unwrap();
         }
         let output_device: &Device = &output_devices[index];
