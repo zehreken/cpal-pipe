@@ -1,5 +1,7 @@
-use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-use cpal::{Device, Host, StreamData, UnknownTypeInputBuffer, UnknownTypeOutputBuffer};
+// use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
+// use cpal::{Device, Host, StreamData, UnknownTypeInputBuffer, UnknownTypeOutputBuffer};
+use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+use cpal::{Device, Host};
 use ringbuf::RingBuffer;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -34,7 +36,7 @@ fn main() {
 fn start_play_through(receiver: Receiver<usize>) {
     thread::spawn(move || {
         let host = cpal::default_host();
-        let event_loop = host.event_loop();
+        // let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
         println!("Available Input Devices");
         for (i, device) in input_devices.iter().enumerate() {
@@ -42,7 +44,7 @@ fn start_play_through(receiver: Receiver<usize>) {
                 Ok(n) => println!("({}) {}", i, n),
                 Err(_) => eprintln!("({}) Unknown device", i),
             }
-            match device.default_input_format() {
+            match device.default_input_config() {
                 Ok(f) => println!("--- {:?}", f),
                 Err(_) => eprintln!("Couldn't fetch format"),
             }
@@ -59,8 +61,8 @@ fn start_play_through(receiver: Receiver<usize>) {
             index = receiver.recv().unwrap();
         }
         let input_device: &Device = &input_devices[index];
-        let input_channel_count = match input_device.default_input_format() {
-            Ok(f) => f.channels,
+        let input_channel_count = match input_device.default_input_config() {
+            Ok(f) => f.channels(),
             Err(_) => 0,
         };
 
@@ -72,7 +74,7 @@ fn start_play_through(receiver: Receiver<usize>) {
                 Ok(n) => println!("({}) {}", i, n),
                 Err(_) => eprintln!("({}) Unknown device", i),
             }
-            match device.default_output_format() {
+            match device.default_output_config() {
                 Ok(f) => println!("--- {:?}", f),
                 Err(_) => eprintln!("Couldn't fetch format"),
             }
@@ -88,41 +90,89 @@ fn start_play_through(receiver: Receiver<usize>) {
             index = receiver.recv().unwrap();
         }
         let output_device: &Device = &output_devices[index];
-        let output_channel_count = match output_device.default_output_format() {
-            Ok(f) => f.channels,
+        let output_channel_count = match output_device.default_output_config() {
+            Ok(f) => f.channels(),
             Err(_) => 0,
         };
 
         let (prod_factor, cons_factor) =
             get_channel_factor(input_channel_count, output_channel_count);
 
-        let input_stream_id = event_loop
-            .build_input_stream(&input_device, &input_device.default_input_format().unwrap())
-            .unwrap();
+        // let input_stream_id = event_loop
+        //     .build_input_stream(&input_device, &input_device.default_input_config().unwrap())
+        //     .unwrap();
 
-        let output_stream_id = event_loop
-            .build_output_stream(
-                &output_device,
-                &output_device.default_output_format().unwrap(),
-            )
-            .unwrap();
+        // let output_stream_id = event_loop
+        //     .build_output_stream(
+        //         &output_device,
+        //         &output_device.default_output_config().unwrap(),
+        //     )
+        //     .unwrap();
 
         // println!("{:?} {:?}", input_stream_id, output_stream_id);
 
-        event_loop
-            .play_stream(input_stream_id)
-            .expect("Failed to play input stream");
+        // event_loop
+        //     .play_stream(input_stream_id)
+        //     .expect("Failed to play input stream");
 
-        event_loop
-            .play_stream(output_stream_id)
-            .expect("Failed to play output stream");
+        // event_loop
+        //     .play_stream(output_stream_id)
+        //     .expect("Failed to play output stream");
 
-        let ring_buffer = RingBuffer::<f32>::new(4096);
+        let ring_buffer = RingBuffer::new(4096);
         let (mut prod, mut cons) = ring_buffer.split();
         for _ in 0..10 {
             prod.push(0.0).unwrap();
         }
 
+        let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
+            let mut output_fell_behind = false;
+            for &sample in data {
+                if prod.push(sample).is_err() {
+                    output_fell_behind = true;
+                }
+            }
+            if output_fell_behind {
+                eprintln!("Output stream fell behind")
+            }
+        };
+        let config: cpal::StreamConfig = input_device.default_input_config().unwrap().into();
+        let input_stream = input_device
+            .build_input_stream(&config, input_data_fn, err_fn)
+            .unwrap();
+
+        let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+            let mut input_fell_behind = false;
+            for sample in data {
+                *sample = match cons.pop() {
+                    Some(s) => s,
+                    None => {
+                        input_fell_behind = true;
+                        0.0
+                    }
+                };
+            }
+            if input_fell_behind {
+                eprintln!("Input stream fell behind");
+            }
+        };
+        let output_stream = output_device
+            .build_output_stream(&config, output_data_fn, err_fn)
+            .unwrap();
+
+
+        loop {
+        input_stream
+            .play()
+            .expect("Error while playing input stream");
+        output_stream
+            .play()
+            .expect("Error while playing output stream");
+        }
+        // std::thread::sleep(std::time::Duration::from_secs(3));
+        
+
+        /*
         event_loop.run(move |stream_id, stream_result| {
             let stream_data = match stream_result {
                 Ok(data) => data,
@@ -161,7 +211,12 @@ fn start_play_through(receiver: Receiver<usize>) {
                 _ => (),
             }
         });
+        */
     });
+}
+
+fn err_fn(err: cpal::StreamError) {
+    eprintln!("an error occurred on stream: {}", err);
 }
 
 fn get_channel_factor(input_channel_count: u16, output_channel_count: u16) -> (u16, u16) {
