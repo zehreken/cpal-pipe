@@ -160,17 +160,15 @@ fn start_play_through(receiver: Receiver<usize>) {
             .build_output_stream(&config, output_data_fn, err_fn)
             .unwrap();
 
-
         loop {
-        input_stream
-            .play()
-            .expect("Error while playing input stream");
-        output_stream
-            .play()
-            .expect("Error while playing output stream");
+            input_stream
+                .play()
+                .expect("Error while playing input stream");
+            output_stream
+                .play()
+                .expect("Error while playing output stream");
         }
         // std::thread::sleep(std::time::Duration::from_secs(3));
-        
 
         /*
         event_loop.run(move |stream_id, stream_result| {
