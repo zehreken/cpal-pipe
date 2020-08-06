@@ -1,5 +1,3 @@
-// use cpal::traits::{DeviceTrait, EventLoopTrait, HostTrait};
-// use cpal::{Device, Host, StreamData, UnknownTypeInputBuffer, UnknownTypeOutputBuffer};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{Device, Host};
 use ringbuf::RingBuffer;
@@ -36,7 +34,6 @@ fn main() {
 fn start_play_through(receiver: Receiver<usize>) {
     thread::spawn(move || {
         let host = cpal::default_host();
-        // let event_loop = host.event_loop();
         let input_devices = get_input_devices(&host);
         println!("Available Input Devices");
         for (i, device) in input_devices.iter().enumerate() {
@@ -97,27 +94,6 @@ fn start_play_through(receiver: Receiver<usize>) {
 
         let (prod_factor, cons_factor) =
             get_channel_factor(input_channel_count, output_channel_count);
-
-        // let input_stream_id = event_loop
-        //     .build_input_stream(&input_device, &input_device.default_input_config().unwrap())
-        //     .unwrap();
-
-        // let output_stream_id = event_loop
-        //     .build_output_stream(
-        //         &output_device,
-        //         &output_device.default_output_config().unwrap(),
-        //     )
-        //     .unwrap();
-
-        // println!("{:?} {:?}", input_stream_id, output_stream_id);
-
-        // event_loop
-        //     .play_stream(input_stream_id)
-        //     .expect("Failed to play input stream");
-
-        // event_loop
-        //     .play_stream(output_stream_id)
-        //     .expect("Failed to play output stream");
 
         let ring_buffer = RingBuffer::new(4096);
         let (mut prod, mut cons) = ring_buffer.split();
