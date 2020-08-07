@@ -95,6 +95,7 @@ fn start_play_through(receiver: Receiver<usize>) {
         let (prod_factor, cons_factor) =
             get_channel_factor(input_channel_count, output_channel_count);
 
+        println!("{}, {}", prod_factor, cons_factor);
         let ring_buffer = RingBuffer::new(4096);
         let (mut prod, mut cons) = ring_buffer.split();
         for _ in 0..10 {
@@ -104,13 +105,15 @@ fn start_play_through(receiver: Receiver<usize>) {
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
             let mut output_fell_behind = false;
             for &sample in data {
-                if prod.push(sample).is_err() {
-                    output_fell_behind = true;
+                for _ in 0..prod_factor {
+                    if prod.push(sample).is_err() {
+                        output_fell_behind = true;
+                    }
                 }
             }
-            if output_fell_behind {
-                eprintln!("Output stream fell behind")
-            }
+            // if output_fell_behind {
+            //     eprintln!("Output stream fell behind")
+            // }
         };
         let config: cpal::StreamConfig = input_device.default_input_config().unwrap().into();
         let input_stream = input_device
@@ -120,17 +123,19 @@ fn start_play_through(receiver: Receiver<usize>) {
         let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
             let mut input_fell_behind = false;
             for sample in data {
-                *sample = match cons.pop() {
-                    Some(s) => s,
-                    None => {
-                        input_fell_behind = true;
-                        0.0
-                    }
-                };
+                for _ in 0..cons_factor {
+                    *sample = match cons.pop() {
+                        Some(s) => s,
+                        None => {
+                            input_fell_behind = true;
+                            0.0
+                        }
+                    };
+                }
             }
-            if input_fell_behind {
-                eprintln!("Input stream fell behind");
-            }
+            // if input_fell_behind {
+            //     eprintln!("Input stream fell behind");
+            // }
         };
         let output_stream = output_device
             .build_output_stream(&config, output_data_fn, err_fn)
