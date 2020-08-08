@@ -1,3 +1,4 @@
+use super::constants;
 use super::cpal_utils;
 use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::Device;
@@ -21,12 +22,15 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             }
         }
 
-        // This should be a loop, duh!
         let mut index = receiver.recv().unwrap();
         while index >= input_devices.len() {
             let mut options_str = String::new();
             for i in 0..input_devices.len() {
-                options_str += &format!("{}, ", i)[..];
+                if i == input_devices.len() - 1 {
+                    options_str += &format!("{}", i)[..];
+                } else {
+                    options_str += &format!("{}, ", i)[..];
+                }
             }
             println!("Available options: {}", options_str);
             index = receiver.recv().unwrap();
@@ -55,7 +59,11 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         while index >= output_devices.len() {
             let mut options_str = String::new();
             for i in 0..output_devices.len() {
-                options_str += &format!("{}, ", i)[..];
+                if i == input_devices.len() - 1 {
+                    options_str += &format!("{}", i)[..];
+                } else {
+                    options_str += &format!("{}, ", i)[..];
+                }
             }
             println!("Available options: {}", options_str);
             index = receiver.recv().unwrap();
@@ -69,8 +77,8 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         let (prod_factor, cons_factor) =
             get_channel_factor(input_channel_count, output_channel_count);
 
-        println!("{}, {}", prod_factor, cons_factor);
-        let ring_buffer = RingBuffer::new(4096);
+        // println!("{}, {}", prod_factor, cons_factor);
+        let ring_buffer = RingBuffer::new(constants::BUFFER_CAPACITY);
         let (mut prod, mut cons) = ring_buffer.split();
         for _ in 0..10 {
             prod.push(0.0).unwrap();
