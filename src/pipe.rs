@@ -157,5 +157,7 @@ fn get_channel_factor(input_channel_count: u16, output_channel_count: u16) -> (u
             cons_factor = 1;
         }
     }
+    prod_factor = 1;
+    cons_factor = 1;
     (prod_factor, cons_factor)
 }
