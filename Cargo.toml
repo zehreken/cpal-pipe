@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cpal = "0.12.1"
+cpal = "0.13.1"
 ringbuf = "0.2.2"
-console = "=0.11.2"
+console = "0.14.0"
