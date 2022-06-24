@@ -10,7 +10,7 @@ fn main() {
     // This is the blocking thread and also the main
     let mut buf = String::new();
     'key: loop {
-        if buf == "quit" {
+        if buf == "q" {
             break 'key;
         } else if buf == "0" {
             sender.send(0).unwrap();

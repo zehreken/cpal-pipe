@@ -67,6 +67,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         let output_device: &Device = &output_devices[index];
 
         println!("Running pipe...");
+        println!("Press 'q' and then enter to quit");
 
         let ring_buffer = RingBuffer::new(constants::BUFFER_CAPACITY);
         let (mut producer, mut consumer) = ring_buffer.split();
@@ -105,7 +106,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
                 .play()
                 .expect("Error while playing output stream");
 
-            std::thread::sleep(std::time::Duration::from_millis(16));
+            std::thread::sleep(std::time::Duration::from_millis(1));
         }
     });
 }
