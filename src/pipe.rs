@@ -10,7 +10,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
     thread::spawn(move || {
         let host = cpal::default_host();
         let input_devices = cpal_utils::get_input_devices(&host);
-        println!("Available Input Devices ====");
+        println!("\x1b[0;45mAvailable Input Devices\x1b[0m");
         for (i, device) in input_devices.iter().enumerate() {
             match device.name() {
                 Ok(name) => println!("({}) {}", i, name),
@@ -39,7 +39,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
 
         // Fetch output devices
         let output_devices = cpal_utils::get_output_devices(&host);
-        println!("Available Output Devices");
+        println!("\x1b[0;45mAvailable Output Devices\x1b[0m");
         for (i, device) in output_devices.iter().enumerate() {
             match device.name() {
                 Ok(name) => println!("({}) {}", i, name),
@@ -67,7 +67,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         let output_device: &Device = &output_devices[index];
 
         println!("Running pipe...");
-        println!("Press 'q' and then enter to quit");
+        println!("\x1b[0;41mTo quit, press 'q' and then enter\x1b[0m");
 
         let ring_buffer = RingBuffer::new(constants::BUFFER_CAPACITY);
         let (mut producer, mut consumer) = ring_buffer.split();
