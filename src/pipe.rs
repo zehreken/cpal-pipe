@@ -13,11 +13,11 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         println!("Available Input Devices ====");
         for (i, device) in input_devices.iter().enumerate() {
             match device.name() {
-                Ok(n) => println!("({}) {}", i, n),
+                Ok(name) => println!("({}) {}", i, name),
                 Err(_) => eprintln!("({}) Unknown device", i),
             }
             match device.default_input_config() {
-                Ok(f) => println!("--- {:?}", f),
+                Ok(f) => println!(" -- {:?}", f),
                 Err(_) => eprintln!("Couldn't fetch format"),
             }
         }
@@ -42,11 +42,11 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         println!("Available Output Devices");
         for (i, device) in output_devices.iter().enumerate() {
             match device.name() {
-                Ok(n) => println!("({}) {}", i, n),
+                Ok(name) => println!("({}) {}", i, name),
                 Err(_) => eprintln!("({}) Unknown device", i),
             }
             match device.default_output_config() {
-                Ok(f) => println!("--- {:?}", f),
+                Ok(f) => println!(" -- {:?}", f),
                 Err(_) => eprintln!("Couldn't fetch format"),
             }
         }
@@ -66,15 +66,19 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         }
         let output_device: &Device = &output_devices[index];
 
+        println!("Running pipe...");
+
         let ring_buffer = RingBuffer::new(constants::BUFFER_CAPACITY);
-        let (mut prod, mut cons) = ring_buffer.split();
+        let (mut producer, mut consumer) = ring_buffer.split();
         for _ in 0..constants::FILLER {
-            prod.push(0.0).unwrap();
+            producer.push(0.0).unwrap();
         }
 
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
             for &sample in data {
-                prod.push(sample).unwrap();
+                producer
+                    .push(sample)
+                    .expect("Error pushing sample to producer");
             }
         };
 
@@ -85,10 +89,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
 
         let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
             for sample in data {
-                *sample = match cons.pop() {
-                    Some(s) => s,
-                    None => 0.0,
-                };
+                *sample = consumer.pop().unwrap_or(0.0);
             }
         };
 
