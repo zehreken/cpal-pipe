@@ -10,7 +10,8 @@ pub fn start_play_through(receiver: Receiver<usize>) {
     thread::spawn(move || {
         let host = cpal::default_host();
         let input_devices = cpal_utils::get_input_devices(&host);
-        println!("\x1b[0;45mAvailable Input Devices\x1b[0m");
+        let msg = constants::PURPLE_FILL.to_owned() + "Available Input Devices" + constants::RESET;
+        println!("{}", msg);
         for (i, device) in input_devices.iter().enumerate() {
             match device.name() {
                 Ok(name) => println!("({}) {}", i, name),
@@ -39,7 +40,8 @@ pub fn start_play_through(receiver: Receiver<usize>) {
 
         // Fetch output devices
         let output_devices = cpal_utils::get_output_devices(&host);
-        println!("\x1b[0;45mAvailable Output Devices\x1b[0m");
+        let msg = constants::PURPLE_FILL.to_owned() + "Available Output Devices" + constants::RESET;
+        println!("{}", msg);
         for (i, device) in output_devices.iter().enumerate() {
             match device.name() {
                 Ok(name) => println!("({}) {}", i, name),
@@ -67,13 +69,12 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         let output_device: &Device = &output_devices[index];
 
         println!("Running pipe...");
-        println!("\x1b[0;41mTo quit, press 'q' and then enter\x1b[0m");
+        let msg =
+            constants::RED_FILL.to_owned() + "To quit, press 'q' and then enter" + constants::RESET;
+        println!("{}", msg);
 
         let ring_buffer = RingBuffer::new(constants::BUFFER_CAPACITY);
         let (mut producer, mut consumer) = ring_buffer.split();
-        for _ in 0..constants::FILLER {
-            producer.push(0.0).unwrap();
-        }
 
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
             for &sample in data {
