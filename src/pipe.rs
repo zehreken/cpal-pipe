@@ -1,6 +1,7 @@
 use super::constants;
 use super::cpal_utils;
 use cpal::traits::{DeviceTrait, StreamTrait};
+use cpal::BufferSize;
 use cpal::Device;
 use ringbuf::RingBuffer;
 use std::sync::mpsc::Receiver;
@@ -38,6 +39,10 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         }
         let input_device: &Device = &input_devices[index];
 
+        // Set buffer size, what we set here is the actual buffer size, on the hardware
+        const BUFFER_SIZE: u32 = 32;
+        const RINGBUFFER_SIZE: usize = 32 * 4;
+
         // Fetch output devices
         let output_devices = cpal_utils::get_output_devices(&host);
         let msg = constants::PURPLE_FILL.to_owned() + "Available Output Devices" + constants::RESET;
@@ -73,10 +78,11 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             constants::RED_FILL.to_owned() + "To quit, press 'q' and then enter" + constants::RESET;
         println!("{}", msg);
 
-        let ring_buffer = RingBuffer::new(constants::BUFFER_SIZE);
+        let ring_buffer = RingBuffer::new(RINGBUFFER_SIZE);
         let (mut producer, mut consumer) = ring_buffer.split();
 
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
+            // println!("{}", data.len());
             for &sample in data {
                 let r = producer.push(sample);
                 match r {
@@ -86,7 +92,8 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             }
         };
 
-        let config: cpal::StreamConfig = input_device.default_input_config().unwrap().into();
+        let mut config: cpal::StreamConfig = input_device.default_input_config().unwrap().into();
+        config.buffer_size = BufferSize::Fixed(BUFFER_SIZE);
         let input_stream = input_device
             .build_input_stream(&config, input_data_fn, err_fn)
             .unwrap();
@@ -95,6 +102,7 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             for sample in data {
                 *sample = consumer.pop().unwrap_or(0.0);
             }
+            consumer.discard(RINGBUFFER_SIZE);
         };
 
         let output_stream = output_device
