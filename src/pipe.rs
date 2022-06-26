@@ -73,14 +73,16 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             constants::RED_FILL.to_owned() + "To quit, press 'q' and then enter" + constants::RESET;
         println!("{}", msg);
 
-        let ring_buffer = RingBuffer::new(constants::BUFFER_CAPACITY);
+        let ring_buffer = RingBuffer::new(constants::BUFFER_SIZE);
         let (mut producer, mut consumer) = ring_buffer.split();
 
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
             for &sample in data {
-                producer
-                    .push(sample)
-                    .expect("Error pushing sample to producer");
+                let r = producer.push(sample);
+                match r {
+                    Ok(_) => {}
+                    Err(_) => eprintln!("Buffer overrun error, output stream is behind"),
+                }
             }
         };
 
