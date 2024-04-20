@@ -1,8 +1,8 @@
 use super::constants;
 use super::cpal_utils;
 use cpal::traits::{DeviceTrait, StreamTrait};
-use cpal::BufferSize;
 use cpal::Device;
+use cpal::StreamConfig;
 use ringbuf::RingBuffer;
 use std::sync::mpsc::Receiver;
 use std::thread;
@@ -40,8 +40,8 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         let input_device: &Device = &input_devices[index];
 
         // Set buffer size, what we set here is the actual buffer size, on the hardware
-        const BUFFER_SIZE: u32 = 32;
-        const RINGBUFFER_SIZE: usize = 32 * 4;
+        const BUFFER_SIZE: u32 = 512;
+        const RINGBUFFER_SIZE: usize = 32 * 4 * 8;
 
         // Fetch output devices
         let output_devices = cpal_utils::get_output_devices(&host);
@@ -82,7 +82,6 @@ pub fn start_play_through(receiver: Receiver<usize>) {
         let (mut producer, mut consumer) = ring_buffer.split();
 
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
-            // println!("{}", data.len());
             for &sample in data {
                 let r = producer.push(sample);
                 match r {
@@ -92,10 +91,14 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             }
         };
 
-        let mut config: cpal::StreamConfig = input_device.default_input_config().unwrap().into();
-        config.buffer_size = BufferSize::Fixed(BUFFER_SIZE);
+        // let input_config: cpal::StreamConfig = cpal::StreamConfig {
+        //     channels: 2,
+        //     sample_rate: cpal::SampleRate(48000),
+        //     buffer_size: BufferSize::Fixed(BUFFER_SIZE),
+        // };
+        let input_config: StreamConfig = input_device.default_input_config().unwrap().into();
         let input_stream = input_device
-            .build_input_stream(&config, input_data_fn, err_fn)
+            .build_input_stream(&input_config, input_data_fn, err_fn, None)
             .unwrap();
 
         let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
@@ -105,8 +108,9 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             consumer.discard(RINGBUFFER_SIZE);
         };
 
+        let output_config = output_device.default_output_config().unwrap().into();
         let output_stream = output_device
-            .build_output_stream(&config, output_data_fn, err_fn)
+            .build_output_stream(&output_config, output_data_fn, err_fn, None)
             .unwrap();
 
         loop {
