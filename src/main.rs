@@ -25,6 +25,10 @@ fn main() {
             buf.clear();
             std::io::stdin().read_line(&mut buf).unwrap();
             buf.remove(buf.len() - 1);
+            #[cfg(target_os = "windows")]
+            {
+                buf.remove(buf.len() - 1);
+            }
         }
     }
 }
