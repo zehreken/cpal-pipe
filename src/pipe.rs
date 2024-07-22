@@ -3,7 +3,8 @@ use super::cpal_utils;
 use cpal::traits::{DeviceTrait, StreamTrait};
 use cpal::BufferSize;
 use cpal::Device;
-use ringbuf::RingBuffer;
+use ringbuf::traits::*;
+use ringbuf::HeapRb;
 use std::sync::mpsc::Receiver;
 use std::thread;
 
@@ -78,13 +79,13 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             constants::RED_FILL.to_owned() + "To quit, press 'q' and then enter" + constants::RESET;
         println!("{}", msg);
 
-        let ring_buffer = RingBuffer::new(RINGBUFFER_SIZE);
+        let ring_buffer = HeapRb::<f32>::new(RINGBUFFER_SIZE);
         let (mut producer, mut consumer) = ring_buffer.split();
 
         let input_data_fn = move |data: &[f32], _: &cpal::InputCallbackInfo| {
             // println!("{}", data.len());
             for &sample in data {
-                let r = producer.push(sample);
+                let r = producer.try_push(sample);
                 match r {
                     Ok(_) => {}
                     Err(_) => eprintln!("Buffer overrun error, output stream is behind"),
@@ -92,31 +93,36 @@ pub fn start_play_through(receiver: Receiver<usize>) {
             }
         };
 
-        let mut config: cpal::StreamConfig = input_device.default_input_config().unwrap().into();
-        config.buffer_size = BufferSize::Fixed(BUFFER_SIZE);
+        let mut input_config: cpal::StreamConfig =
+            input_device.default_input_config().unwrap().into();
+        input_config.buffer_size = BufferSize::Fixed(BUFFER_SIZE);
         let input_stream = input_device
-            .build_input_stream(&config, input_data_fn, err_fn)
+            .build_input_stream(&input_config, input_data_fn, err_fn, None)
             .unwrap();
 
         let output_data_fn = move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
             for sample in data {
-                *sample = consumer.pop().unwrap_or(0.0);
+                *sample = consumer.try_pop().unwrap_or(0.0);
             }
-            consumer.discard(RINGBUFFER_SIZE);
+            // Clear consumer if there is left over data
+            consumer.clear();
         };
 
+        let mut output_config: cpal::StreamConfig =
+            output_device.default_output_config().unwrap().into();
+        output_config.buffer_size = BufferSize::Fixed(BUFFER_SIZE);
         let output_stream = output_device
-            .build_output_stream(&config, output_data_fn, err_fn)
+            .build_output_stream(&output_config, output_data_fn, err_fn, None)
             .unwrap();
 
-        loop {
-            input_stream
-                .play()
-                .expect("Error while playing input stream");
-            output_stream
-                .play()
-                .expect("Error while playing output stream");
+        input_stream
+            .play()
+            .expect("Error while playing input stream");
+        output_stream
+            .play()
+            .expect("Error while Playing out stream");
 
+        loop {
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     });
